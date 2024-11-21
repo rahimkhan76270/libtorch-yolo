@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}",
+                "/home/rahim-khan/libtorch/include",
+                "/home/rahim-khan/libtorch/include/torch/csrc/api/include",
+                "/home/rahim-khan/libtorch/include/torch/csrc/api/include/torch",
+                "/home/rahim-khan/Work/libtorch-yolo/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
