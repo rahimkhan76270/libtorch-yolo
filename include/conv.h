@@ -29,7 +29,7 @@ public:
     Conv2(int64_t c1, int64_t c2, int64_t k = 1, int64_t s = 1, std::optional<int64_t> p = std::nullopt, int64_t g = 1, int64_t d = 1, bool act = true);
     torch::Tensor forward(torch::Tensor x);
     torch::Tensor forward_fuse(torch::Tensor x);
-    void fuse_convs();
+    // void fuse_convs();
 
 private:
     torch::nn::SiLU default_act{nullptr};

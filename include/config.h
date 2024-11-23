@@ -8,6 +8,15 @@
 
 using ParamType = std::variant<int, float, bool,std::vector<int>,std::string>;
 
+struct SingleKernel {
+    std::vector<int64_t> kernel;
+};
+
+struct MultiKernel {
+    std::vector<std::vector<int64_t>> kernels;
+};
+
+
 class backbone_layer_config{
     public:
         int from =-1;

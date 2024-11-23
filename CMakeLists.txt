@@ -14,6 +14,8 @@ find_package(Torch REQUIRED)
 add_executable(main main.cpp)
 add_library(config src/config.cpp)
 add_library(yolov11 src/yolov11.cpp)
+add_library(conv src/conv.cpp)
+add_library(block src/block.cpp)
 
 # Link libraries
 target_link_libraries(main 
@@ -21,6 +23,8 @@ target_link_libraries(main
     "${TORCH_LIBRARIES}"
     config
     yolov11
+    conv
+    block
 )
 
 
