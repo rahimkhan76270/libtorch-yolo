@@ -113,4 +113,13 @@ private:
     torch::nn::Sequential m{nullptr};
 };
 
+class DFL : public torch::nn::Module {
+public:
+    DFL(int64_t c1 = 16);
+    torch::Tensor forward(torch::Tensor x);
+private:
+    int64_t c1;                       
+    torch::nn::Conv2d conv{nullptr};
+};
+
 #endif

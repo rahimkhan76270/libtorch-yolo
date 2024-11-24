@@ -109,3 +109,6 @@ Concat::Concat(int64_t dimension) : dimension_(dimension) {}
 torch::Tensor Concat::forward(const std::vector<torch::Tensor>& inputs) {
     return torch::cat(inputs, dimension_);
 }
+
+DWConv::DWConv(int64_t c1, int64_t c2, int64_t k, int64_t s, int64_t d, bool act)
+    : Conv(c1, c2, k, s, std::nullopt, std::gcd(c1, c2), d, act) {}

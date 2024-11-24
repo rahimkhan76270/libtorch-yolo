@@ -49,4 +49,9 @@ private:
     int64_t dimension_;
 };
 
+class DWConv : public Conv {
+public:
+    DWConv(int64_t c1, int64_t c2, int64_t k = 1, int64_t s = 1, int64_t d = 1, bool act = true);
+};
+
 #endif

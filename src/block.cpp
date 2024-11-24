@@ -5,14 +5,14 @@
 #include <stdexcept>
 #include <math.h>
 
-Bottleneck::Bottleneck(int64_t c1, int64_t c2, bool shortcut, int64_t g, SingleKernel k, float e): c_(static_cast<int64_t>(c2 * e)),cv1(Conv(c1, c_, k.kernel[0], 1, std::nullopt, 1, 1, true)),cv2(Conv(c_, c2, k.kernel[1], 1, std::nullopt, g, 1, true))
+Bottleneck::Bottleneck(int64_t c1, int64_t c2, bool shortcut, int64_t g, SingleKernel k, float e) : c_(static_cast<int64_t>(c2 * e)), cv1(Conv(c1, c_, k.kernel[0], 1, std::nullopt, 1, 1, true)), cv2(Conv(c_, c2, k.kernel[1], 1, std::nullopt, g, 1, true))
 {
     register_module("cv1", cv1);
     register_module("cv2", cv2);
     add = shortcut && (c1 == c2);
 }
 Bottleneck::Bottleneck(int64_t c1, int64_t c2, bool shortcut, int64_t g, MultiKernel k, float e) : c_(static_cast<int64_t>(c2 * e)),
-                                                                                                                         cv1(Conv(c1, c_, k.kernels[0], 1, std::nullopt, 1, 1, true)), cv2(Conv(c_, c2, k.kernels[1], 1, std::nullopt, g, 1, true))
+                                                                                                   cv1(Conv(c1, c_, k.kernels[0], 1, std::nullopt, 1, 1, true)), cv2(Conv(c_, c2, k.kernels[1], 1, std::nullopt, g, 1, true))
 {
     register_module("cv1", cv1);
     register_module("cv2", cv2);
@@ -21,7 +21,7 @@ Bottleneck::Bottleneck(int64_t c1, int64_t c2, bool shortcut, int64_t g, MultiKe
 
 torch::Tensor Bottleneck::forward(torch::Tensor x)
 {
-    if(add)
+    if (add)
     {
         return x + cv2->forward(cv1->forward(x));
     }
@@ -34,14 +34,14 @@ torch::Tensor Bottleneck::forward(torch::Tensor x)
 C2f::C2f(int64_t c1, int64_t c2, int64_t n, bool shortcut, int64_t g, float e) : c(static_cast<int64_t>(c2 * e)), cv1(Conv(c1, 2 * c, 1, 1, std::nullopt, 1, 1, true)),
                                                                                  cv2(Conv((2 + n) * c, c2, 1, 1, std::nullopt, 1, 1, true))
 {
-    m=register_module("m", torch::nn::ModuleList());
+    m = register_module("m", torch::nn::ModuleList());
     register_module("cv1", cv1);
     register_module("cv2", cv2);
 
     std::vector<std::vector<int64_t>> kernel = {{3, 3}, {3, 3}};
     for (int i = 0; i < n; i++)
     {
-        m->push_back(std::make_shared<Bottleneck>(c, c, shortcut, g, kernel, 1.0));
+        m->push_back(std::make_shared<Bottleneck>(c, c, shortcut, g, MultiKernel{kernel}, 1.0));
     }
 }
 
@@ -104,16 +104,16 @@ C3k::C3k(int64_t c1, int64_t c2, int64_t n, bool shortcut, int64_t g, float e, i
 C3k2::C3k2(int64_t c1, int64_t c2, int64_t n, bool c3k, float e, int64_t g, bool shortcut)
     : C2f(c1, c2, n, shortcut, g, e)
 {
-    m=register_module("m", torch::nn::ModuleList());
+    m = register_module("m", torch::nn::ModuleList());
     for (int64_t i = 0; i < n; ++i)
     {
         if (c3k)
         {
-            m->push_back(std::make_shared<C3k>(c, c, 2, shortcut, g));
+            m->push_back(std::make_shared<C3k>(c, c, 2, shortcut, g, 0.5, 3));
         }
         else
         {
-            m->push_back(std::make_shared<Bottleneck>(c, c, shortcut, g));
+            m->push_back(std::make_shared<Bottleneck>(c, c, shortcut, g, SingleKernel{{3, 3}}, 0.5));
         }
     }
 }
@@ -140,7 +140,7 @@ Attention::Attention(int64_t dim_, int64_t num_heads_, float attn_ratio_) : num_
                                                                             pe(Conv(dim_, dim_, 3, 1, std::nullopt, dim_, 1, false))
 {
     register_module("qkv", qkv);
-    register_module("prij", proj);
+    register_module("proj", proj);
     register_module("pe", pe);
 }
 
@@ -188,21 +188,43 @@ torch::Tensor PSABlock::forward(torch::Tensor x)
     return x;
 }
 
-C2PSA::C2PSA(int64_t c1,int64_t c2,int64_t n,float e):c(static_cast<int64_t>(c1*e)), cv1(Conv(c1, 2*c, 1, 1, std::nullopt, 1, 1, true)), cv2(Conv(c * 2, c1, 1, 1, std::nullopt, 1, 1, true))
+C2PSA::C2PSA(int64_t c1, int64_t c2, int64_t n, float e) : c(static_cast<int64_t>(c1 * e)), cv1(Conv(c1, 2 * c, 1, 1, std::nullopt, 1, 1, true)), cv2(Conv(c * 2, c1, 1, 1, std::nullopt, 1, 1, true))
 {
-    register_module("cv1",cv1);
-    register_module("cv2",cv2);
-    m=register_module("m",torch::nn::Sequential());
-    for(int i=0;i<n;i++)
+    register_module("cv1", cv1);
+    register_module("cv2", cv2);
+    m = register_module("m", torch::nn::Sequential());
+    for (int i = 0; i < n; i++)
     {
-        m->push_back(PSABlock(c,0.5,c/64,true));
+        m->push_back(PSABlock(c, 0.5, c / 64, true));
     }
 }
 
 torch::Tensor C2PSA::forward(torch::Tensor x)
 {
-    auto out=cv1(x).split({c,c},1);
-    torch::Tensor a=out[0],b=out[1];
-    b=m->forward(b);
-    return cv2->forward(torch::cat({a,b},1));
+    auto out = cv1(x).split({c, c}, 1);
+    torch::Tensor a = out[0], b = out[1];
+    b = m->forward(b);
+    return cv2->forward(torch::cat({a, b}, 1));
+}
+
+DFL::DFL(int64_t c1_) : c1(c1_)
+{
+    conv = register_module(
+        "conv",
+        torch::nn::Conv2d(torch::nn::Conv2dOptions(c1, 1, 1).bias(false)));
+    for (auto &p : conv->parameters())
+    {
+        p.requires_grad_(false);
+    }
+    torch::Tensor x = torch::arange(c1, torch::kFloat);
+    conv->weight.data().copy_(x.view({1, c1, 1, 1}));
+}
+
+torch::Tensor DFL::forward(torch::Tensor x)
+{
+    auto b = x.size(0);
+    auto a = x.size(2);
+    auto reshaped = x.view({b, 4, c1, a}).transpose(1, 2).softmax(1);
+    auto out = conv->forward(reshaped);
+    return out.view({b, 4, a});
 }
