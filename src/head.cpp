@@ -1,6 +1,7 @@
 #include "head.h"
 #include <vector>
 #include <tuple>
+#include <string>
 
 bool areIntArrayRefsEqual(const torch::IntArrayRef &a, const torch::IntArrayRef &b)
 {
@@ -40,15 +41,15 @@ torch::Tensor dist2bbox(torch::Tensor distance,
 }
 
 std::pair<torch::Tensor, torch::Tensor> make_anchors(
-    const std::vector<torch::Tensor> &feats,
-    const std::vector<int> &strides,
+    torch::Tensor feats,
+    torch::Tensor strides,
     float grid_cell_offset = 0.5)
 {
     std::vector<torch::Tensor> anchor_points, stride_tensors;
-    TORCH_CHECK(!feats.empty(), "Input features cannot be empty.");
+    TORCH_CHECK(!feats.size(0) == 0, "Input features cannot be empty.");
     auto dtype = feats[0].dtype();
     auto device = feats[0].device();
-    for (size_t i = 0; i < strides.size(); ++i)
+    for (size_t i = 0; i < strides.size(0); ++i)
     {
         int h = feats[i].size(2);
         int w = feats[i].size(3);
@@ -56,13 +57,13 @@ std::pair<torch::Tensor, torch::Tensor> make_anchors(
         auto sy = torch::arange(0, h, torch::TensorOptions().dtype(dtype).device(device)) + grid_cell_offset;
         auto grid = torch::meshgrid({sy, sx}, /*indexing=*/"ij");
         auto sx_grid = grid[1];
-        auto sy_grid =grid[0];
+        auto sy_grid = grid[0];
 
         auto points = torch::stack({sx_grid, sy_grid}, -1).view({-1, 2});
         anchor_points.push_back(points);
 
         // Create stride tensor with shape (h * w, 1)
-        auto stride_tensor = torch::full({h * w, 1}, strides[i], torch::TensorOptions().dtype(dtype).device(device));
+        auto stride_tensor = torch::full({h * w, 1}, strides[i].item<float>(), torch::TensorOptions().dtype(dtype).device(device));
         stride_tensors.push_back(stride_tensor);
     }
     auto anchors = torch::cat(anchor_points, 0);
@@ -70,7 +71,6 @@ std::pair<torch::Tensor, torch::Tensor> make_anchors(
 
     return {anchors, strides_out};
 }
-
 
 Detect::Detect(int64_t nc_, std::vector<int64_t> ch) : nc(nc_), nl(ch.size()), no(nc + reg_max * 4), stride(torch::zeros({nl})), dfl(DFL(reg_max))
 {
@@ -191,8 +191,32 @@ torch::Tensor Detect::_inference(torch::Tensor x)
         list_tensors.push_back(x[i].view({shape_[0], no, -1}));
     }
     auto x_cat = torch::cat(list_tensors, 2);
+    auto splt = x_cat.split({this->reg_max * 4, this->nc}, 1);
+    auto box = splt[0];
+    auto cls = splt[1];
+    auto dbox = decode_bboxes(dfl->forward(box) * this->strides, this->anchors.unsqueeze(0), false) * this->strides;
+    return torch::cat({dbox, cls.sigmoid()}, 1);
+}
 
-    if (format != "imx" && (dynamic || areIntArrayRefsEqual(shape_, shape)))
+torch::Tensor Detect::forward_end2end(torch::Tensor x)
+{
+    std::vector<torch::Tensor> x_detach;
+    for (int i = 0; i < x.size(0); i++)
     {
+        x_detach.push_back(x[i].detach());
     }
+    std::vector<torch::Tensor> one2one;
+    for (int i = 0; i < this->nl; i++)
+    {
+        one2one.push_back(torch::cat({one2one_cv2[i]->as<torch::nn::Sequential>()->forward(x_detach[i]), one2one_cv3[i]->as<torch::nn::Sequential>()->forward(x_detach[i])}, 1));
+    }
+
+    for (int i = 0; i < nl; i++)
+    {
+        x[i] = torch::cat({cv2[i]->as<torch::nn::Sequential>()->forward(x[i]), cv3[i]->as<torch::nn::Sequential>()->forward(x[i])}, 1);
+    }
+
+    auto y = _inference(torch::cat(one2one, 0));
+    y = postprocess(y.permute({0, 2, 1}), max_det, nc);
+    return y;
 }
