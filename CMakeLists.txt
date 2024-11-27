@@ -16,6 +16,7 @@ add_library(config src/config.cpp)
 add_library(yolov11 src/yolov11.cpp)
 add_library(conv src/conv.cpp)
 add_library(block src/block.cpp)
+add_library(head src/head.cpp)
 
 # Link libraries
 target_link_libraries(main 
@@ -25,6 +26,7 @@ target_link_libraries(main
     yolov11
     conv
     block
+    head
 )
 
 

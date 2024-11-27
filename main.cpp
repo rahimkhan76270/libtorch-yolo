@@ -3,10 +3,9 @@
 
 int main()
 {
-    YOLOv11_cfg* v11_cfg=new YOLOv11_cfg();
-    for(auto pair:v11_cfg->scale_config.scale_dict)
-    {
-        std::cout<<pair.first<<" "<<pair.second<<std::endl;
-    }
+    auto yolo =std::make_shared<YOLOv11>("n");
+    auto sample=torch::rand({1,3,64,64});
+    auto y=yolo->forward(sample);
+    std::cout<<y<<std::endl;
     return 0;
 }

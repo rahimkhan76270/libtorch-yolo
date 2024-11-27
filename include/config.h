@@ -23,10 +23,6 @@ class backbone_layer_config{
         int repeats=1;
         torch::nn::Module module;
         std::vector<ParamType> layer_config;
-        // backbone_layer_config(int from,
-        //                     int repeats,
-        //                     torch::nn::Module module,
-        //                     std::vector<ParamType> layer_config);
 };
 class scales
 {
@@ -38,7 +34,6 @@ class scales
 class backbone{
     public:
         std::vector<backbone_layer_config> config;
-        // backbone(std::vector<backbone_layer_config> config);
 };
 
 class head_layer_config{

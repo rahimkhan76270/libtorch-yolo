@@ -122,4 +122,13 @@ private:
     torch::nn::Conv2d conv{nullptr};
 };
 
+class Upsample: public torch::nn::Module
+{
+public:
+    Upsample(float scale);
+    torch::Tensor forward(torch::Tensor x);
+private:
+    torch::nn::Upsample upsample{nullptr};
+};
+
 #endif

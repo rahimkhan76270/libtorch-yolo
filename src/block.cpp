@@ -228,3 +228,13 @@ torch::Tensor DFL::forward(torch::Tensor x)
     auto out = conv->forward(reshaped);
     return out.view({b, 4, a});
 }
+
+Upsample::Upsample(float scale)
+{
+    upsample=register_module("upsample",torch::nn::Upsample(torch::nn::UpsampleOptions().mode(torch::kNearest).scale_factor(std::vector<double>({scale}))));
+}
+
+torch::Tensor Upsample::forward(torch::Tensor x)
+{
+    return upsample->forward(x);
+}
